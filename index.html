@@ -6,20 +6,22 @@
     body {
       background: #0f0f0f;
       color: white;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       text-align: center;
     }
 
     h1 {
       color: orange;
+      margin-top: 20px;
     }
 
     .achievement {
       border: 2px solid #333;
-      margin: 15px;
+      margin: 15px auto;
       padding: 15px;
       border-radius: 12px;
       background: #1a1a1a;
+      width: 300px;
       transition: 0.2s;
       cursor: pointer;
       position: relative;
@@ -100,10 +102,10 @@ const popup = document.getElementById("popup");
 let saved = JSON.parse(localStorage.getItem("achievements")) || [];
 let timers = JSON.parse(localStorage.getItem("timers")) || {};
 
-// Track last online time for Touch Grass
+// Track last online time
 let lastOnline = Date.now();
 
-// Apply saved states
+// Apply saved state
 achievements.forEach((a, index) => {
   if (saved.includes(index)) {
     a.classList.remove('locked');
@@ -150,7 +152,7 @@ function showPopup(text) {
   setTimeout(() => { popup.style.display = "none"; }, 2000);
 }
 
-// Update Touch Grass timer (pauses while online)
+// Update Touch Grass timer (paused while online)
 function updateTimer() {
   const tg = document.getElementById("touchGrass");
   const timerEl = document.getElementById("touchGrassTimer");
@@ -171,29 +173,26 @@ function updateTimer() {
     return;
   }
 
-  // Display time remaining (paused while online)
-  let h = Math.floor(remaining/(1000*60*60));
-  let m = Math.floor((remaining%(1000*60*60))/(1000*60));
-  let s = Math.floor((remaining%60000)/1000);
+  let h = Math.floor(remaining / (1000*60*60));
+  let m = Math.floor((remaining % (1000*60*60)) / (1000*60));
+  let s = Math.floor((remaining % (1000*60)) / 1000);
   timerEl.innerText = `⏱ ${h}h ${m}m ${s}s`;
 
-  setTimeout(updateTimer, 1000);
+  setTimeout(updateTimer, 1000); // Only updates display while online
 }
 
 // Adjust timer when leaving the page
 window.addEventListener("beforeunload", () => {
   if (timers.touchGrass) {
-    const elapsed = Date.now() - lastOnline;
-    timers.touchGrass.start += elapsed; // Only count offline time
+    const onlineTime = Date.now() - lastOnline;
+    timers.touchGrass.start += onlineTime; // Only count offline time
     localStorage.setItem("timers", JSON.stringify(timers));
   }
 });
 
-// Start timer update loop
+// Start timer loop
 updateTimer();
 </script>
 
 </body>
-</style>
-</head>
-<body>
+</html>
