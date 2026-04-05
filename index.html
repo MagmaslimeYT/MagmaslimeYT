@@ -37,6 +37,20 @@
       border-color: lime;
       box-shadow: 0 0 10px lime;
     }
+
+    #popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: black;
+      border: 2px solid lime;
+      padding: 15px;
+      border-radius: 10px;
+      display: none;
+      box-shadow: 0 0 15px lime;
+      font-weight: bold;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -68,8 +82,12 @@
   <p>No games for 24 hours</p>
 </div>
 
+<!-- Popup -->
+<div id="popup">🏆 Achievement Unlocked!</div>
+
 <script>
   const achievements = document.querySelectorAll('.achievement');
+  const popup = document.getElementById("popup");
 
   // Load saved achievements
   let saved = JSON.parse(localStorage.getItem("achievements")) || [];
@@ -84,13 +102,22 @@
 
     // Click to unlock
     a.addEventListener('click', () => {
-      a.classList.remove('locked');
-      a.classList.add('unlocked');
 
       if (!saved.includes(index)) {
         saved.push(index);
         localStorage.setItem("achievements", JSON.stringify(saved));
+
+        // SHOW POPUP
+        popup.style.display = "block";
+        popup.innerText = "🏆 " + a.innerText.split("\n")[0] + " unlocked!";
+
+        setTimeout(() => {
+          popup.style.display = "none";
+        }, 2000);
       }
+
+      a.classList.remove('locked');
+      a.classList.add('unlocked');
     });
 
   });
