@@ -101,8 +101,6 @@ const popup = document.getElementById("popup");
 let saved = JSON.parse(localStorage.getItem("achievements")) || [];
 let timers = JSON.parse(localStorage.getItem("timers")) || {};
 
-let lastOnline = Date.now();
-
 achievements.forEach((a, index) => {
   if (saved.includes(index)) {
     a.classList.remove('locked');
@@ -111,12 +109,16 @@ achievements.forEach((a, index) => {
 });
 
 achievements.forEach((a, index) => {
-  const timerEl = a.querySelector('.timer');
-
   a.addEventListener('click', () => {
     if (a.id === "touchGrass") {
       if (!timers.touchGrass) {
-        timers.touchGrass = { start: Date.now(), duration: 24*60*60*1000 };
+        timers.touchGrass = { 
+          start: Date.now(), 
+          duration: 24*60*60*1000,
+          pauseAccumulator: 0,
+          lastVisibilityState: document.hidden ? "hidden" : "visible",
+          lastCheckTime: Date.now()
+        };
         localStorage.setItem("timers", JSON.stringify(timers));
         updateTimer();
         showPopup("⏳ Timer started!");
@@ -150,52 +152,6 @@ function updateTimer() {
   const timerEl = document.getElementById("touchGrassTimer");
   if (!timers.touchGrass) return;
 
-  const now = Date.now();
-  const remaining = timers.touchGrass.start + timers.touchGrass.duration - now;
-
-  if (remaining <= 0) {
-    tg.classList.remove('locked');
-    tg.classList.add('unlocked');
-    if (!saved.includes(Array.from(achievements).indexOf(tg))) saved.push(Array.from(achievements).indexOf(tg));
-    localStorage.setItem("achievements", JSON.stringify(saved));
-    delete timers.touchGrass;
-    localStorage.setItem("timers", JSON.stringify(timers));
-    timerEl.innerText = "";
-    showPopup("🏆 Touch Grass unlocked!");
-    return;
-  }
-
-  let h = Math.floor(remaining / (1000*60*60));
-  let m = Math.floor((remaining % (1000*60*60)) / (1000*60));
-  let s = Math.floor((remaining % (1000*60)) / 1000);
-  timerEl.innerText = `⏱ ${h}h ${m}m ${s}s`;
-
-  setTimeout(updateTimer, 1000);
-}
-
-window.addEventListener("beforeunload", () => {
-  if (timers.touchGrass) {
-    const onlineTime = Date.now() - lastOnline;
-    timers.touchGrass.start += onlineTime;
-    localStorage.setItem("timers", JSON.stringify(timers));
-  }
-});
-
-if (timers.touchGrass && timers.touchGrass.pauseAccumulator === undefined) {
-  timers.touchGrass.pauseAccumulator = 0;
-  timers.touchGrass.lastVisibilityState = document.hidden ? "hidden" : "visible";
-  timers.touchGrass.lastCheckTime = Date.now();
-  localStorage.setItem("timers", JSON.stringify(timers));
-}
-
-const originalUpdateTimer = updateTimer;
-window.updateTimer = function() {
-  const tg = document.getElementById("touchGrass");
-  const timerEl = document.getElementById("touchGrassTimer");
-  if (!timers.touchGrass) {
-    return;
-  }
-  
   if (timers.touchGrass.pauseAccumulator === undefined) {
     timers.touchGrass.pauseAccumulator = 0;
     timers.touchGrass.lastVisibilityState = document.hidden ? "hidden" : "visible";
@@ -225,8 +181,9 @@ window.updateTimer = function() {
   if (remaining <= 0) {
     tg.classList.remove('locked');
     tg.classList.add('unlocked');
-    if (!saved.includes(Array.from(achievements).indexOf(tg))) {
-      saved.push(Array.from(achievements).indexOf(tg));
+    const tgIndex = Array.from(achievements).indexOf(tg);
+    if (!saved.includes(tgIndex)) {
+      saved.push(tgIndex);
     }
     localStorage.setItem("achievements", JSON.stringify(saved));
     delete timers.touchGrass;
@@ -243,23 +200,8 @@ window.updateTimer = function() {
   
   localStorage.setItem("timers", JSON.stringify(timers));
   
-  setTimeout(window.updateTimer, 1000);
-};
-
-window.addEventListener("beforeunload", () => {
-  if (timers.touchGrass) {
-    const now = Date.now();
-    const lastTime = timers.touchGrass.lastCheckTime || now;
-    if (timers.touchGrass.lastVisibilityState === "visible") {
-      const elapsedVisible = now - lastTime;
-      if (elapsedVisible > 0) {
-        timers.touchGrass.pauseAccumulator += elapsedVisible;
-      }
-    }
-    timers.touchGrass.lastCheckTime = now;
-    localStorage.setItem("timers", JSON.stringify(timers));
-  }
-});
+  setTimeout(updateTimer, 1000);
+}
 
 document.addEventListener("visibilitychange", () => {
   if (timers.touchGrass) {
@@ -279,9 +221,7 @@ document.addEventListener("visibilitychange", () => {
     timers.touchGrass.lastCheckTime = now;
     localStorage.setItem("timers", JSON.stringify(timers));
     
-    if (window.updateTimer) {
-      window.updateTimer();
-    }
+    updateTimer();
   }
 });
 
@@ -298,7 +238,7 @@ window.addEventListener("focus", () => {
     timers.touchGrass.lastVisibilityState = "visible";
     timers.touchGrass.lastCheckTime = now;
     localStorage.setItem("timers", JSON.stringify(timers));
-    if (window.updateTimer) window.updateTimer();
+    updateTimer();
   }
 });
 
@@ -315,33 +255,34 @@ window.addEventListener("blur", () => {
     timers.touchGrass.lastVisibilityState = "hidden";
     timers.touchGrass.lastCheckTime = now;
     localStorage.setItem("timers", JSON.stringify(timers));
-    if (window.updateTimer) window.updateTimer();
+    updateTimer();
   }
 });
 
-let originalBeforeUnloadExecuted = false;
 window.addEventListener("beforeunload", () => {
-  if (timers.touchGrass && !originalBeforeUnloadExecuted) {
+  if (timers.touchGrass) {
     const now = Date.now();
-    const deltaOnline = now - lastOnline;
-    if (deltaOnline > 0 && timers.touchGrass.start) {
-      timers.touchGrass.start -= deltaOnline;
-      timers.touchGrass.pauseAccumulator = (timers.touchGrass.pauseAccumulator || 0) + deltaOnline;
-      if (timers.touchGrass.lastVisibilityState === undefined) {
-        timers.touchGrass.lastVisibilityState = document.hidden ? "hidden" : "visible";
-        timers.touchGrass.lastCheckTime = now;
+    const lastTime = timers.touchGrass.lastCheckTime || now;
+    if (timers.touchGrass.lastVisibilityState === "visible") {
+      const elapsedVisible = now - lastTime;
+      if (elapsedVisible > 0) {
+        timers.touchGrass.pauseAccumulator += elapsedVisible;
       }
-      localStorage.setItem("timers", JSON.stringify(timers));
     }
-    originalBeforeUnloadExecuted = true;
+    timers.touchGrass.lastCheckTime = now;
+    localStorage.setItem("timers", JSON.stringify(timers));
   }
 });
 
-window.updateTimer();
-
-setTimeout(() => {
-  if (window.updateTimer) window.updateTimer();
-}, 50);
+if (timers.touchGrass) {
+  if (timers.touchGrass.pauseAccumulator === undefined) {
+    timers.touchGrass.pauseAccumulator = 0;
+    timers.touchGrass.lastVisibilityState = document.hidden ? "hidden" : "visible";
+    timers.touchGrass.lastCheckTime = Date.now();
+    localStorage.setItem("timers", JSON.stringify(timers));
+  }
+  updateTimer();
+}
 </script>
 
 </body>
