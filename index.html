@@ -98,6 +98,166 @@ const popup = document.getElementById("popup");
 
 // Load saved achievements
 let saved = JSON.parse(localStorage.getItem("achievements")) || [];
+let timers = JSON.parse(localStorage.getItem("timers")) || {};
+
+// Track last online time for Touch Grass
+let lastOnline = Date.now();
+
+// Apply saved states
+achievements.forEach((a, index) => {
+  if (saved.includes(index)) {
+    a.classList.remove('locked');
+    a.classList.add('unlocked');
+  }
+});
+
+// Toggle unlock/lock
+achievements.forEach((a, index) => {
+  const timerEl = a.querySelector('.timer');
+
+  a.addEventListener('click', () => {
+    if (a.id === "touchGrass") {
+      // Start timer if not started
+      if (!timers.touchGrass) {
+        timers.touchGrass = { start: Date.now(), duration: 24*60*60*1000 }; // 24h
+        localStorage.setItem("timers", JSON.stringify(timers));
+        updateTimer();
+        showPopup("⏳ Timer started!");
+      }
+    } else {
+      // Normal toggle
+      if (a.classList.contains('locked')) {
+        a.classList.remove('locked');
+        a.classList.add('unlocked');
+        if (!saved.includes(index)) saved.push(index);
+        localStorage.setItem("achievements", JSON.stringify(saved));
+        showPopup("🏆 " + a.innerText.split("\n")[0] + " unlocked!");
+      } else {
+        a.classList.remove('unlocked');
+        a.classList.add('locked');
+        saved = saved.filter(i => i !== index);
+        localStorage.setItem("achievements", JSON.stringify(saved));
+        showPopup("⚠️ " + a.innerText.split("\n")[0] + " locked!");
+      }
+    }
+  });
+});
+
+// Popup helper
+function showPopup(text) {
+  popup.style.display = "block";
+  popup.innerText = text;
+  setTimeout(() => { popup.style.display = "none"; }, 2000);
+}
+
+// Update Touch Grass timer (pauses while online)
+function updateTimer() {
+  const tg = document.getElementById("touchGrass");
+  const timerEl = document.getElementById("touchGrassTimer");
+  if (!timers.touchGrass) return;
+
+  const now = Date.now();
+  const remaining = timers.touchGrass.start + timers.touchGrass.duration - now;
+
+  if (remaining <= 0) {
+    tg.classList.remove('locked');
+    tg.classList.add('unlocked');
+    if (!saved.includes(Array.from(achievements).indexOf(tg))) saved.push(Array.from(achievements).indexOf(tg));
+    localStorage.setItem("achievements", JSON.stringify(saved));
+    delete timers.touchGrass;
+    localStorage.setItem("timers", JSON.stringify(timers));
+    timerEl.innerText = "";
+    showPopup("🏆 Touch Grass unlocked!");
+    return;
+  }
+
+  // Display time remaining (paused while online)
+  let h = Math.floor(remaining/(1000*60*60));
+  let m = Math.floor((remaining%(1000*60*60))/(1000*60));
+  let s = Math.floor((remaining%60000)/1000);
+  timerEl.innerText = `⏱ ${h}h ${m}m ${s}s`;
+
+  setTimeout(updateTimer, 1000);
+}
+
+// Adjust timer when leaving the page
+window.addEventListener("beforeunload", () => {
+  if (timers.touchGrass) {
+    const elapsed = Date.now() - lastOnline;
+    timers.touchGrass.start += elapsed; // Only count offline time
+    localStorage.setItem("timers", JSON.stringify(timers));
+  }
+});
+
+// Start timer update loop
+updateTimer();
+</script>
+
+</body>
+</html>    .unlocked {
+      border-color: lime;
+      box-shadow: 0 0 10px lime;
+    }
+
+    .timer {
+      font-size: 0.9em;
+      margin-top: 5px;
+      color: yellow;
+    }
+
+    #popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: black;
+      border: 2px solid lime;
+      padding: 15px;
+      border-radius: 10px;
+      display: none;
+      box-shadow: 0 0 15px lime;
+      font-weight: bold;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🔥 Miles Achievement System 🔥</h1>
+
+<div class="achievement unlocked">
+  <h2>🟢 Fresh Air</h2>
+  <p>Go outside for 5 minutes</p>
+</div>
+
+<div class="achievement locked">
+  <h2>🔵 Human Behavior</h2>
+  <p>No games for 1 hour</p>
+</div>
+
+<div class="achievement locked">
+  <h2>🟣 Rehabilitation Arc</h2>
+  <p>No games for 6 hours</p>
+</div>
+
+<div class="achievement locked">
+  <h2>🟠 New Person??</h2>
+  <p>No games for 12 hours</p>
+</div>
+
+<div class="achievement locked" id="touchGrass">
+  <h2>🔴 Touch Grass</h2>
+  <p>No games for 24 hours</p>
+  <div class="timer" id="touchGrassTimer"></div>
+</div>
+
+<div id="popup">🏆 Achievement Unlocked!</div>
+
+<script>
+const achievements = document.querySelectorAll('.achievement');
+const popup = document.getElementById("popup");
+
+// Load saved achievements
+let saved = JSON.parse(localStorage.getItem("achievements")) || [];
 let timers = JSON.parse(localStorage.getItem("timers")) || {}; // For timer achievements
 
 achievements.forEach((a, index) => {
